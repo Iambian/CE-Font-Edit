@@ -1,0 +1,110 @@
+Segment  Base   Top    High   Length
+-------- ------ ------ ------ -------
+icon     D1A882 D1A9AB           129h
+launcher D1A9AB D1AA03            58h
+libs     D1AA03 D1AA7C            79h
+startup  D1AA7C D1AABB            3Fh
+cleanup  D1AABB D1AACF            14h
+exit     D1AACF D1AAD5             6h
+code     D1AAD5 D1C1BE          16E9h
+data     D1C1BE D1C264            A6h
+strsect  D1C264 D1C41C           1B8h
+text     D1C41C D1C41C             0h
+bss      D031F6 D067FA D13FD6   3604h
+header   D1A87F D1A882             3h
+
+Label                          Value
+----------------------------   ------
+_os_DisableHomeTextBuffer    = D1AAD5
+_os_EnableHomeTextBuffer     = D1AAE7
+__frameset0                  = D1AAF9
+__frameset                   = D1AB04
+__imuls                      = 000154
+__imul_b                     = 000158
+__imul_b                     = 000150
+__ishrs_b                    = 00017C
+__ishrs_b                    = 000180
+__ishru_b                    = 000184
+__ishru_b                    = 000188
+_memmove                     = 0000A8
+_memset                      = D1AB12
+_memcpy                      = 0000A4
+__ior                        = 000168
+__idivs                      = 00013C
+__icmpzero                   = 000138
+__setflag                    = 000218
+__findlibload                = D1A9AB
+__program_icon               = D1A887
+__program_description        = D1A989
+__ccleanup                   = D1AABB
+_errno                       = D008DC
+_init                        = D1A882
+_exit                        = D1AAD1
+__exit                       = D1AAAA
+__exitsp                     = D1AAAA
+__errsp                      = D1AAAA
+_font_CommitEditBuffer       = D1BC4C
+_menu_DrawTabMenu            = D1BA13
+_menu_DrawMenuBox            = D1B986
+_menu_GetMenuWidth           = D1B92E
+_menu_GetMenuHeight          = D1B8F4
+_font_LoadDefaultEditBuffer  = D1B8CD
+_font_LoadEditBuffer         = D1B8A0
+_font_NewFile                = D1B7DC
+_menu_Redraw                 = D1AEA2
+_menutabs                    = D1C255
+_menu_helpopt                = D1C24F
+_menu_nextopt                = D1C249
+_menu_prevopt                = D1C243
+_menu_editopt                = D1C23D
+_menu_fileopt                = D1C237
+_editor_title                = D1C234
+_sidebarbracket              = D1AE16
+_centersidebar               = D1ADDC
+_main                        = D1AB29
+_help_menutext               = D1C21C
+_edit_menutext               = D1C201
+_file_menutext               = D1C1E0
+_filelist                    = D067EB
+_filelist_len                = D067E8
+_edit                        = D067DF
+_fontdata                    = D03214
+_numcodes                    = D03213
+_editbuf                     = D031F7
+_fonttype                    = D031F6
+_GetScan                     = D1BDBC
+_PrintHexPair                = D1BE58
+_PrintLargeChar              = D1BFB6
+_PrintSmallChar              = D1C069
+_GetSmallCharWidth           = D1C022
+_SetupPalette                = D1C17D
+_GetCharLocation             = D1BF48
+_PrintChar                   = D1BF25
+_GetFontBit                  = D1C119
+_SetFontBit                  = D1C11F
+_ResFontBit                  = D1C126
+_InvFontBit                  = D1C12E
+_GetDefaultLocation          = D1BF0A
+_gfx_Begin                   = D1AA16
+_gfx_End                     = D1AA1A
+_gfx_SetColor                = D1AA1E
+_gfx_FillScreen              = D1AA22
+_gfx_SetDraw                 = D1AA26
+_gfx_BlitRectangle           = D1AA2A
+_gfx_PrintChar               = D1AA2E
+_gfx_PrintUInt               = D1AA32
+_gfx_PrintString             = D1AA36
+_gfx_PrintStringXY           = D1AA3A
+_gfx_SetTextXY               = D1AA3E
+_gfx_SetTextBGColor          = D1AA42
+_gfx_SetTextFGColor          = D1AA46
+_gfx_SetTextTransparentColor = D1AA4A
+_gfx_GetStringWidth          = D1AA4E
+_gfx_GetTextX                = D1AA52
+_gfx_GetTextY                = D1AA56
+_gfx_FillRectangle           = D1AA5A
+_gfx_HorizLine_NoClip        = D1AA5E
+_gfx_Rectangle_NoClip        = D1AA62
+_gfx_FillRectangle_NoClip    = D1AA66
+_gfx_SetTransparentColor     = D1AA6A
+_kb_Scan                     = D1AA78
