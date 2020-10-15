@@ -6,6 +6,7 @@ XDEF _GetScan
 XDEF _PrintHexPair
 XDEF _PrintLargeChar
 XDEF _PrintSmallChar
+XDEF _PopulateFileList
 XDEF _GetSmallCharWidth
 XDEF _SetupPalette
 XDEF _GetCharLocation
@@ -15,6 +16,8 @@ XDEF _SetFontBit
 XDEF _ResFontBit
 XDEF _InvFontBit
 XDEF _GetDefaultLocation
+XDEF _LoadCursors
+XDEF _KeyToChar
 
 
 ;Import these definitions from othere sources (e.g. libraries)
@@ -27,7 +30,7 @@ XREF _gfx_SetTextFGColor
 
 XREF _editbuf
 
-GETSCAN_MAXDEBOUNCE     EQU   73
+GETSCAN_MAXDEBOUNCE     EQU   130
 GETSCAN_REPEATDELAY     EQU   13
 
 flags             EQU $D00080 ;As defined in ti84pce.inc
@@ -207,6 +210,7 @@ printhexpair_hex:
 ;------------------------------------------------------------------------------
 ;------------------------------------------------------------------------------
 ;arg0 = file type (0x06=protprog,0x15=appvar)
+;returns: list length
 XREF _filelist_len
 XREF _filelist
 _PopulateFileList:      
@@ -658,13 +662,16 @@ _InvFontBit:
       ret
 
 fontbit_getmask:
+      ;ld    a,2
+      ;ld    (-1),a
       ld    de,0
       ld    hl,_editbuf
-      ld    iy,3
+      ld    iy,6
       add   iy,sp
       ld    e,(iy+3)    ;y, save in E for offsetting
       ld    c,(iy+0)    ;x, save in C for ease of reference
       ld    a,(iy+6)    ;fontid
+      or    a,a
       jr    nz,fontbit_getmasklarge
       ld    a,(hl)
       inc   hl
@@ -763,7 +770,130 @@ setupPaletteLoop:
 	RET
       
       
-    
-      
+;------------------------------------------------------------------------------
+;------------------------------------------------------------------------------
+;This routine only exists because C doesn't allow definition of binary
+;constants, which is pretty important when directly defining 1bpp graphics.
 
+;a0=idx/chr, a1=*data
+XREF _gfx_SetCharData
+;no args. chars loaded at graphx codepoints 1-5
+_LoadCursors:
+      ld    c,1
+      ld    b,5
+      ld    hl,loadcursors_data
+loadcursors_loop:
+      push  hl
+            push  bc
+                  call  _gfx_SetCharData
+            pop   bc
+      pop   hl
+      ld    de,8
+      add   hl,de
+      inc   c
+      djnz  loadcursors_loop
+      ret
+      
+loadcursors_data:
+;+0 - solid block
+db 11111110b
+db 11111110b
+db 11111110b
+db 11111110b
+db 11111110b
+db 11111110b
+db 11111110b
+db 11111110b
+;+1 - "A" alpha
+db 11111110b
+db 11001110b
+db 10110110b
+db 10110110b
+db 10000110b
+db 10110110b
+db 10110110b
+db 11111110b
+;+2 - 'a' alpha
+db 11111110b
+db 11001110b
+db 11110110b
+db 11000110b
+db 10110110b
+db 10110110b
+db 11000110b
+db 11111110b
+;+3 - '1' numeric
+db 11111110b
+db 11101110b
+db 11001110b
+db 11101110b
+db 11101110b
+db 11101110b
+db 11000110b
+db 11111110b
+;+4 - checkboard pattern
+db 01010100b
+db 10101010b
+db 01010100b
+db 10101010b
+db 01010100b
+db 10101010b
+db 01010100b
+db 10101010b
+
+;------------------------------------------------------------------------------
+;------------------------------------------------------------------------------
+;Allows more optimized and fine-tuned bit manipulations in assembly.
+
+;arg0 = key, arg1 = mode/cursor (1:none,2:alpha,3:lower,4:num,5:block)
+;returns: A = char
+_KeyToChar:
+      ld    hl,6
+      add   hl,sp
+      ld    b,(hl)
+      res   7,b   ;remove persist flag
+      dec   hl
+      dec   hl
+      dec   hl
+      ld    a,(hl)
+      dec   a     ;align results to keygroups
+      cp    a,9   ;arrow keys disallowed
+      jr    c,keytochar_disallow
+      cp    a,48  ;keys higher than alpha disallowed (no printables)
+      jr    nc,keytochar_disallow
+      djnz  keytochar_nums    ;no mode? do only nums
+      djnz  keytochar_alpha
+      djnz  keytochar_lower
+      djnz  keytochar_nums
+      ;anything above 4 is disallowed.
+keytochar_disallow:
+      xor   a,a
+      ret
+keytochar_nums:
+      ld    hl,keytochar_numtable
+      ld    bc,10
+      ld    e,$30+10
+      jr    keytochar_compare
+keytochar_lower:
+      ld    e,$61+26
+      jr    keytochar_alpha+2
+keytochar_alpha:
+      ld    e,$41+26
+      ld    hl,keytochar_alphatable
+      ld    bc,26
+keytochar_compare:
+      cpir
+      jr    nz,keytochar_disallow
+      ld    a,c
+      cpl
+      add   a,e
+      ret   ;62
+
+keytochar_numtable:
+;  0  1  2  3  4  5  6  7  8  9  
+db 33,34,26,18,35,27,19,36,25,20
+keytochar_alphatable:
+;  A  B  C  D  E  F  G  H  I  J  K  L  M  N  O  P  Q  R  S  T  U  V  W  X  Y  Z
+db 47,39,31,46,38,30,22,14,45,37,29,21,13,44,36,28,20,12,43,35,27,19,11,42,34,26
+;Total: 98 bytes
 

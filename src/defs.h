@@ -149,6 +149,9 @@
 #define CX_FILEVIEW	0x04
 #define CX_FILEEDIT	0x08
 
+#define FILEACT_OPEN	0x00
+#define FILEACT_SAVEAS	0x01
+
 /* Menu defines */
 #define UPD_ALL		(0xFF & ~UPD_PREVIEW)
 #define UPD_TABS	0x01
@@ -162,7 +165,15 @@
 #define	OBJ_LOCKED	0x04
 #define	OBJ_ALOCKED	0x08
 
+/* Cursor defines. Use gfx_PrintChar to display them. */
+#define CURSOR_SOLID	1
+#define CURSOR_ALPHA	2
+#define CURSOR_LOWER	3
+#define CURSOR_NUMBER	4
+#define CURSOR_CHECKER	5
 
+#define CURSOR_TIMEON	30
+#define CURSOR_TIMEMAX	60
 
 /* Defines regarding dimensions of things */
 #define TITLE_LEFT	0

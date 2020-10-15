@@ -43,7 +43,7 @@ uint8_t	menu_GetMenuWidth(char **s);
 void	menu_DrawMenuBox(int x, uint8_t y, int w, uint8_t h);
 uint8_t	menu_DrawTabMenu(char **sa, uint8_t pos);
 void	font_CommitEditBuffer(void);
-
+int		menu_DrawFileMenu(char **sa, uint8_t id);
 
 
 
@@ -59,8 +59,10 @@ uint8_t numcodes;
 struct fontdata_st fontdata;  //fontdata.[codepoints,lfont,sfont]
 struct editor_st edit;
 int filelist_len;
-struct filelist_st filelist; 
-
+struct filelist_st filelist[255]; 
+struct filelist_st curfile;
+struct filelist_st menufile;
+char namebuf[10];
 
 char *file_menutext[] = {"\1New","\1Open...","\1Save","\1Save As...","\3-","\1Preview","\1Export","\1Import","\3-","\1Exit","\0"};
 char *edit_menutext[] = {"\1Undo","\1Redo","\1Copy","\1Paste","\1Use TI-OS Glyph","\1Change Font Size","\1Delete Codepoint","\1Clear Grid","\0"};
@@ -68,20 +70,13 @@ char *help_menutext[] = {"\1Using the editor","\1File operations","\1Edit operat
 
 
 
-
-
-
-
-
-
-
-
 void main(void) {
-	uint8_t k,ck,u,hold,gx,gy,fid,val,i;
-	int delta;
+	uint8_t k,ck,u,hold,gx,gy,fid,val,i,j,*buf;
+	int delta,len,rval;
     /* Fill in the body of the main function here */
 	gfx_Begin();
 	SetupPalette();
+	LoadCursors();
 	gfx_SetTransparentColor(COLOR_TRANS);
 	gfx_SetTextTransparentColor(COLOR_TRANS);
 	gfx_SetTextBGColor(COLOR_TRANS);
@@ -93,19 +88,22 @@ void main(void) {
 	
 	hold = k = 0;
 	while (1) {
-		k = GetScan();	ck = k & 0xC0;	k &= 0x3F;
+		k 	= GetScan();
+		ck 	= k & 0xC0;
+		k  &= 0x3F;
 		u = edit.update;
 		
 		if (k == sk_Mode) break;
 		
 		if (k|ck) {
 			/* ################ HANDLE EDITING CONTEXT ################### */
+			//dbg_sprintf(dbgout,"keyboard value: %i\n",k);
 			if (edit.context & CX_EDITING) {
 				if ((k == sk_Up)    && (edit.gridy > 0)) --edit.gridy;
 				if ((k == sk_Left)  && (edit.gridx > 0)) --edit.gridx;
 				if ((k == sk_Down)  && (edit.gridy+1 < edit.ylim)) ++edit.gridy;
 				if ((k == sk_Right) && (edit.gridx+1 < edit.xlim)) ++edit.gridx;
-				if (k<9) u |= UPD_GRID;	//Shortcut for "any arrow key"
+				if (k && k<9) u |= UPD_GRID;	//Shortcut for "any arrow key"
 				
 				if (ck & ctrl_2nd) {
 					gx = edit.gridx;
@@ -117,7 +115,18 @@ void main(void) {
 					} else {
 						hold = 1+ !InvFontBit(gx,gy,fid);	//1=was set, 2= not set
 					}
-					u |= UPD_GRID | UPD_PREVIEW;
+					if (k && k<9) u |= UPD_PREVIEW;
+				}
+				if (k == sk_Clear) {
+					buf = editbuf;
+					len = LARGEST_BUF;
+					if (ck & ctrl_Alpha)	//invert
+						i = 0xFF;
+					else 					//clear
+						i = 0x00;
+					if (edit.fonttype == SFONT_T) { ++buf; --len; }
+					for (;len;--len,++buf) *buf = (*buf & i) ^ i;
+					u |= UPD_GRID;
 				}
 				if ((k == tk_Prev) || (k == tk_Next)) {
 					//Commit to fontdata, then change context.
@@ -133,14 +142,44 @@ void main(void) {
 					if (k == tk_Prev)	delta = -1;
 					else				delta = 1;
 					while (!(edit.codepoint += delta));	//repeat until nonzero.
+					u |= UPD_SIDE;
 				}
-				u |= UPD_SIDE;
+				if (ck & ctrl_2nd) {
+					font_LoadEditBuffer();
+					edit.context = CX_EDITING;
+					while (GetScan());	//wait until keyrelease
+					u |= UPD_GRID;
+				}
 			}
 			
 			
 			/* ################### CONTEXTLESS MENUS ##################### */
 			if (k == tk_File) {
 				val = menu_DrawTabMenu(file_menutext,0);
+				if (val == 2) {
+					rval = menu_DrawFileMenu(help_menutext,FILEACT_OPEN);
+					if (rval>=0) {
+						font_NewFile();
+						memcpy(&curfile,&filelist[rval],sizeof curfile);
+						buf = (uint8_t *) curfile.fontstruct;
+						memcpy(fontdata.codepoints,buf,256);
+						numcodes = *fontdata.codepoints;
+						*fontdata.codepoints = 0xFF;
+						buf = buf + 256;
+						memcpy(fontdata.lfont,buf,LFONT_SIZE*numcodes);
+						buf += LFONT_SIZE*numcodes;
+						memcpy(fontdata.sfont,buf,SFONT_SIZE*numcodes);
+						curfile.fontstruct = &fontdata;
+						font_LoadEditBuffer();
+					}
+					u = UPD_ALL;
+				}
+				
+				
+				
+				
+				
+				
 				u |= UPD_ALL;
 			}
 			if (k == tk_Edit) {
@@ -151,9 +190,16 @@ void main(void) {
 				val = menu_DrawTabMenu(help_menutext,4);
 				u |= UPD_ALL;
 			}
-			
-			
-			
+			/* DEBUGGING UNIT */
+			if (k == sk_Math) {
+				//menu_DrawFileMenu(help_menutext,FILEACT_SAVEAS);
+				rval = menu_DrawFileMenu(help_menutext,FILEACT_SAVEAS);
+				
+				
+				
+				
+				u = UPD_ALL;
+			}
 			
 			
 		} else {
@@ -188,6 +234,14 @@ char *menu_nextopt[] = {"\0NEXT","CODEPNT"};
 char *menu_helpopt[] = {"\0HELP",""};
 char **menutabs[] = {menu_fileopt,menu_editopt,menu_prevopt,menu_nextopt,menu_helpopt};
 
+char *file_viewpro[] = {"\0PRGMS",""};
+char *file_viewapv[] = {"\0APPVARS",""};
+char *file_chgfile[] = {"\0BROWSE","FILES"};
+char *file_chgname[] = {"\0INPUT","NAME"};
+char *file_helpopt[] = {"\0HELP",""};
+
+char **filetabs[] = {file_viewpro,file_viewapv,file_chgfile,file_chgname,file_helpopt};
+
 
 void menu_Redraw(void) {
 	int 	x,tx,bx,temp;
@@ -202,7 +256,10 @@ void menu_Redraw(void) {
 		gfx_SetColor(CLR_MAIN_BODY);
 		gfx_FillRectangle(0,TAB_TOP,LCD_WIDTH,TAB_HEIGHT);
 		#ifndef FASTERCOMPILE
-		ts = menutabs;
+		if (edit.context & (CX_FILEEDIT|CX_FILEVIEW))
+			ts = filetabs;
+		else
+			ts = menutabs;
 		x = 1;
 		y = TAB_TOP;
 		for (i=0;i<5;++i,x+=64) {
@@ -265,7 +322,7 @@ void menu_Redraw(void) {
 		
 		gfx_SetTextXY(SIDEBAR_LEFT+4,y);
 		gfx_PrintString("FILE: ");
-		gfx_PrintString("UNTITLED");	//DEBUG: POINT LATER TO 8CH EDIT BUFFER
+		gfx_PrintString(curfile.name);
 		y += 8+8;
 		
 		tmp = fontdata.codepoints[edit.codepoint];
@@ -428,6 +485,10 @@ void font_NewFile(void) {
 	edit.gridy = 0;
 	edit.xlim = 12;
 	edit.ylim = 14;
+	strcpy(curfile.name,"UNTITLED");
+	curfile.size = 0;
+	curfile.filetype = 0x06;
+	curfile.fontstruct = &fontdata;
 	font_LoadEditBuffer();
 }
 
@@ -557,7 +618,187 @@ void font_CommitEditBuffer(void) {
 	return;
 }
 
-
+int	menu_DrawFileMenu(char **sa, uint8_t id) {
+	int 	x,tx,lx,rx,bx,w,tw,lw,rw,bw,tempx,temp,rval;
+	uint8_t	y,ty,ly,ry,by,h,th,lh,rh,bh,tempy;
+	uint8_t i,j,k,u,mpos,mtop,mmax,mprev,tidx,bgc,fgc,*ptr,*buf;
+	uint8_t typeid,newtype,blinktimer,alphastate,letterpos;
+	char *s,c,numbuf[5];
+	
+	if (id) u = CX_FILEEDIT;
+	else	u = CX_FILEVIEW;
+	edit.oldcx = edit.context;
+	edit.context = u;
+	//our filetypes are never zero. can copy with rest of name string
+	if (id)	strcpy((char*)&menufile.filetype,(char*)&curfile.filetype);
+	alphastate = CURSOR_ALPHA;
+	letterpos = blinktimer = 0;
+	
+	w = 214;
+	h = (id) ? 176: 156;
+	x = (LCD_WIDTH-w)/2;
+	y = (LCD_HEIGHT-h)/2;
+	
+	gfx_SetColor(CLR_MENU_BORDER);
+	gfx_SetTextFGColor(COLOR_BLACK);
+	gfx_FillRectangle_NoClip(x,y,w,h);	//Main box.
+	gfx_BlitRectangle(gfx_buffer,x,y,w,h);
+	
+	tx = x+2;		ty = y+2;		tw = w-4;	th = 12;
+	lx = tx;		ly = ty+16;		lw = 120;	lh = 136;
+	rx = tx+lw+4;	ry = ly;		rw = 86;	rh = lh;
+	bx = tx;		by = ry+lh+4;	bw = tw;	bh = 16;
+	
+	rval = 0;
+	typeid = menufile.filetype;
+	menufile.filetype = 0;  //prime for first run
+	mmax = mtop = mpos = i = 0;
+	k = 0x3F;
+	
+	while (1) {
+		if (k == sk_Mode) {
+			while (GetScan());
+			if (id && (u & CX_FILEEDIT)) {
+				u = CX_FILEVIEW;
+				k = 0x3F;
+				continue;
+			}
+			rval = -1;
+			break;
+		}
+		if (k & ctrl_2nd) {
+			while (GetScan());
+			if (id && (u & CX_FILEVIEW)) {
+				u = CX_FILEEDIT;
+				k = 0x3F;
+				continue;
+			}
+			if (id) {
+				rval = -2;
+				break;
+			} else {
+				rval = mpos;
+				break;
+			}
+		}
+		gfx_SetColor(CLR_MENU_BODYBG);
+		
+		/* TODO: Tab actions for changing typeid */
+		//if ((k == sk_
+		
+		
+		
+		if ((k == sk_Left) || (k == sk_Right) || (k == 0x3F)) {
+			if ((u & CX_FILEVIEW) || (k == 0x3F)) {
+				/* Changing topbar */
+				if ((k == sk_Right) && (typeid != 0x15)) typeid = 0x15;				
+				if ((k == sk_Left)  && (typeid != 0x06)) typeid = 0x06;
+				
+				gfx_FillRectangle(tx,ty,tw,th);
+				if (id)	s = "Save as...";
+				else	s = "Open";
+				gfx_PrintStringXY(s,tx+4,ty+2);
+				if (typeid==0x06) 	s = "Programs \x10";
+				else				s = "\x11 Appvars";
+				gfx_PrintStringXY(s,tx+tw-gfx_GetStringWidth(s)-4,ty+2);
+				gfx_BlitRectangle(gfx_buffer,tx,ty,tw,th);
+				if (typeid != menufile.filetype) {
+					filelist_len = mmax = PopulateFileList(typeid);
+					mpos = 0;
+					k = 0x3F;	//Update all screens
+					menufile.filetype = typeid;
+				}
+			}
+			if (u & CX_FILEEDIT) {
+				if ((k == sk_Left) && (letterpos>0)) --letterpos;
+				if ((k == sk_Right) && (menufile.name[letterpos+1])) ++letterpos;
+				if ( k != 0x3F)	blinktimer = 0;
+			}
+		}
+		if ((k == sk_Up) || (k == sk_Down) || (k == 0x3F)) {
+			/* Draw central area */
+			if ((k == sk_Up)  && (mpos > 0   ))	--mpos;
+			if ((k == sk_Down)&& (mpos+1<mmax))	++mpos;
+			if ((mmax-mtop) < 0) mtop = mpos;
+			if ((mmax-mtop) > 7) mtop = mpos-7;
+			gfx_FillRectangle(lx,ly,lw,lh);
+			gfx_FillRectangle(rx,ry,rw,rh);
+			if (mmax) {
+				tempy = ly+2;
+				//dbg_sprintf(dbgout,"Starting loop with mmax: %i\n",mmax);
+				for (i = mtop; (i < (mtop+7)) && (i < mmax); ++i, tempy += 16) {
+					//dbg_sprintf(dbgout,"i=%i, mtop=%i,mpos=%i\n",i,mtop,mpos);
+					if (i == mpos) {
+						gfx_SetColor(COLOR_BLACK|COLOR_LIGHTER);
+						gfx_FillRectangle_NoClip(lx,tempy,lw,16);
+						gfx_FillRectangle_NoClip(rx,tempy,rw,16);
+						fgc = COLOR_WHITE;
+					} else {
+						fgc = COLOR_BLACK;
+					}
+					gfx_SetTextFGColor(fgc);
+					gfx_SetTextXY(lx+4,tempy);
+					for(j=0;c = filelist[i].name[j];++j) {
+						PrintLargeChar(c,filelist[i].fontstruct);
+					}
+					gfx_SetTextXY(rx+4,tempy);
+					temp = filelist[i].size;
+					for(j=5;j;--j) {
+						numbuf[j-1] = (temp%10)+'0';
+						temp /= 10;
+					}
+					for (j=0;j<5;++j) {
+						PrintLargeChar(numbuf[j],filelist[i].fontstruct);
+					}
+				}
+				gfx_SetColor(CLR_MENU_BODYBG);
+				gfx_SetTextFGColor(COLOR_BLACK);
+			}
+			gfx_BlitRectangle(gfx_buffer,lx,ly,lw,lh);
+			gfx_BlitRectangle(gfx_buffer,rx,ry,rw,rh);
+		}
+		if (id) {
+			/* Changing bottom bar */
+			gfx_FillRectangle(bx,by,bw,bh);
+			gfx_PrintStringXY("File name:",bx+4,by+4);
+			if (u & CX_FILEVIEW)
+				bgc = COLOR_LIGHTGRAY;
+			else
+				bgc = COLOR_WHITE;
+			gfx_SetColor(bgc);
+			gfx_SetTextFGColor(COLOR_BLACK);
+			gfx_FillRectangle_NoClip(bx+72,by+2,132,12);
+			gfx_SetColor(CLR_MENU_BODYBG);
+			gfx_SetTextXY(bx+80,by+4);
+			c = 0;
+				for (i=0;i<9;++i) {
+					if ( u & CX_FILEEDIT) {
+						if ((i == letterpos) && (blinktimer < CURSOR_TIMEON)) {
+							c = alphastate;
+						} else if (i<8) {
+							c = menufile.name[i];
+						} else if ((i==9) && (letterpos == 9)) c = CURSOR_CHECKER;
+						else c = 0;
+					} else 	{ 
+						if (i < 8) 
+							c = menufile.name[i]; 
+						else 
+							c = 0; 
+					}
+					if (c) gfx_PrintChar(c);
+				}
+			gfx_BlitRectangle(gfx_buffer,bx,by,bw,bh);
+		}
+		
+		k = GetScan();
+		++blinktimer;
+		if (blinktimer > CURSOR_TIMEMAX) { blinktimer = 0;}
+	}
+	
+	while (GetScan());
+	edit.context = edit.oldcx;
+	return rval;
+}
 
 
 
