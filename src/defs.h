@@ -166,6 +166,10 @@
 #define	OBJ_LOCKED	0x04
 #define	OBJ_ALOCKED	0x08
 
+#define BUFMOD_CLEAR 0x01
+#define BUFMOD_INVERT 0x02
+
+
 /* Cursor defines. Use gfx_PrintChar to display them. */
 #define CURSOR_SOLID	1
 #define CURSOR_ALPHA	2

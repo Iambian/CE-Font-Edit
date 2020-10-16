@@ -22,7 +22,6 @@ XDEF _LookupMenufile
 XDEF _SaveMenufile
 XDEF _MenufileInRam
 
-
 ;Import these definitions from othere sources (e.g. libraries)
 XREF _kb_Scan
 XREF _gfx_PrintChar
@@ -533,7 +532,7 @@ PrintDefaultSmallChar:
       jr    $+4
 _PrintSmallChar:
       ld    a,$28 ;jr z opcode
-      ld    (getlargechar_instrsmc),a
+      ld    (getsmallchar_instrsmc),a
       push  ix                ;-6
       ;-
       ld    ix,6
@@ -679,9 +678,14 @@ fontbit_getmask:
       or    a,a
       jr    nz,fontbit_getmasklarge
       ld    a,(hl)
+      or    a,a
+      jr    z,fontbit_nomask
+      sub   a,1
+      cp    a,c   ;w-x. The sub 1 above makes it so carry results in failure cond
+      jr    c,fontbit_nomask
       inc   hl
-      cp    a,9
-      jr    nc,fontbit_getmaskshortshort
+      cp    a,8   ;was adjusted from 9 based on sub 1 above.
+      jr    c,fontbit_getmaskshortshort
       add   hl,de
       add   hl,de       ;get correct row
       ld    a,c         ;x
@@ -691,7 +695,7 @@ fontbit_getmask:
       ld    a,c
       and   a,7
       jr    fontbit_maskout
-fontbit_getmaskshortshort
+fontbit_getmaskshortshort:
       add   hl,de
       ld    a,c
       and   a,7
@@ -714,7 +718,9 @@ fontbit_maskoutloop:
       rrca
       djnz  fontbit_maskoutloop
       ret
-      
+fontbit_nomask:
+      xor   a,a
+      ret
       
       
       
@@ -1006,5 +1012,24 @@ _MenufileInRam:
       sbc   a,a
       ret
       
+;------------------------------------------------------------------------------
+;------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

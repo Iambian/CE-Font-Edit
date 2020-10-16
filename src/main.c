@@ -49,14 +49,17 @@ int		menu_DrawFileMenu(char **sa, uint8_t id);
 int		font_SaveFile(void);
 void	font_QuickSave(void);
 void	menu_PreviewFont(void);
-
-
+void	font_ModifyEditBuffer(uint8_t modify_how);
+void	font_EditbufToSprite(void);
+void	font_SpriteToEditbuf(void);
 
 /* Put all your globals here */
 
 
 uint8_t fonttype;
 uint8_t editbuf[LARGEST_BUF];
+uint8_t copyid;
+uint8_t copybuf[LARGEST_BUF];
 uint8_t numcodes;
 struct fontdata_st fontdata;  //fontdata.[codepoints,lfont,sfont]
 struct editor_st edit;
@@ -65,9 +68,27 @@ struct filelist_st filelist[255];
 struct filelist_st curfile;
 struct filelist_st menufile;
 char namebuf[10];
+uint8_t tempsprite[2+(24*48)];
+
+
+char *editor_title = "it's going to be a font editor. rawrf.";
+char *menu_fileopt[] = {"\0FILE",""};
+char *menu_editopt[] = {"\0EDIT",""};
+char *menu_prevopt[] = {"\0PREV","CODEPNT"};
+char *menu_nextopt[] = {"\0NEXT","CODEPNT"};
+char *menu_helpopt[] = {"\0HELP",""};
+char **menutabs[] = {menu_fileopt,menu_editopt,menu_prevopt,menu_nextopt,menu_helpopt};
+
+char *file_viewpro[] = {"\0PRGMS",""};
+char *file_viewapv[] = {"\0APPVARS",""};
+char *file_chgfile[] = {"\0BROWSE","FILES"};
+char *file_chgname[] = {"\0INPUT","NAME"};
+char *file_helpopt[] = {"\0HELP",""};
+
+char **filetabs[] = {file_viewpro,file_viewapv,file_chgfile,file_chgname,file_helpopt};
 
 char *file_menutext[] = {"\1New","\1Open...","\1Save","\1Save As...","\3-","\1Preview","\3Export","\3Import","\3-","\1Exit","\0"};
-char *edit_menutext[] = {"\1Undo","\1Redo","\1Copy","\1Paste","\1Use TI-OS Glyph","\1Change Font Size","\1Delete Codepoint","\1Clear Grid","\0"};
+char *edit_menutext[] = {"\3Undo","\3Redo","\1Copy","\1Paste","\1Use TI-OS Glyph","\1Change Font Size","\3Delete Codepoint","\1Clear Grid","\0"};
 char *help_menutext[] = {"\1Using the editor","\1File operations","\1Edit operations","\1Hotkeys 1","\1Hotkeys 2","\1Hotkeys 3","\1About the rawrfs","\0"};
 
 char *notice_saved[]		= {"New file has","been saved!","\0"};
@@ -116,7 +137,20 @@ void main(void) {
 				if ((k == sk_Up)    && (edit.gridy > 0)) --edit.gridy;
 				if ((k == sk_Left)  && (edit.gridx > 0)) --edit.gridx;
 				if ((k == sk_Down)  && (edit.gridy+1 < edit.ylim)) ++edit.gridy;
-				if ((k == sk_Right) && (edit.gridx+1 < edit.xlim)) ++edit.gridx;
+				if  (k == sk_Right) {
+					//if (edit.fonttype == SFONT_T)
+					//	i = editbuf[0];
+					//else
+						i = edit.xlim;
+					if (edit.gridx+1 < i) ++edit.gridx;
+				}
+				if (edit.fonttype == SFONT_T) {
+					
+					
+					
+					
+					
+				}
 				if (k && k<9) u |= UPD_GRID;	//Shortcut for "any arrow key"
 				
 				if (ck & ctrl_2nd) {
@@ -132,27 +166,77 @@ void main(void) {
 					if (k && k<9) u |= UPD_PREVIEW;
 				}
 				if (k == sk_Clear) {
-					buf = editbuf;
-					len = LARGEST_BUF;
-					if (ck & ctrl_Alpha)	//invert
-						i = 0xFF;
-					else 					//clear
-						i = 0x00;
-					if (edit.fonttype == SFONT_T) { ++buf; --len; }
-					for (;len;--len,++buf) *buf = (*buf & i) ^ i;
+					if (ck & ctrl_Alpha)
+						i = BUFMOD_INVERT;
+					else
+						i = BUFMOD_CLEAR;
+					font_ModifyEditBuffer(i);
 					u |= UPD_GRID;
 				}
 				if ((k == tk_Prev) || (k == tk_Next)) {
 					//Commit to fontdata, then change context.
 					//Updating grid only on context change.
 					font_CommitEditBuffer();
+					menutabs[1][0][0] = OBJ_BLOCKED; //Disable edit in non-eidt mode
 					edit.context = CX_BROWSING;
-					u |= UPD_GRID;
+					u |= UPD_GRID|UPD_TABS;
 					/* TODO: Update title bar to indicate file has changed */
 				}
 				if (k == sk_Enter) {
 					font_CommitEditBuffer();
 					/* TODO: Update title bar to indicate file has changed */
+				}
+				if (k == tk_Edit) { /* ~~~~~~~~~~~ EDIT MENU ~~~~~~~~~~~~~~~~  */
+					if (edit.fonttype != copyid)
+						edit_menutext[3][0] = OBJ_BLOCKED;
+					else
+						edit_menutext[3][0] = OBJ_ACTIVE;
+					val = menu_DrawTabMenu(edit_menutext,1);
+					if (val == 1) {
+						/* Undo */
+					}
+					if (val == 2) {
+						/* Redo */
+					}
+					if (val == 3) {
+						/* Copy */
+						copyid = edit.fonttype;
+						memcpy(copybuf,editbuf,LARGEST_BUF);
+					}
+					if ((val == 4) && (copyid == edit.fonttype)) {
+						/* Paste */
+						memcpy(editbuf,copybuf,LARGEST_BUF);
+					}
+					if (val == 5) {
+						/* Use TI-OS Glyph */
+						font_LoadDefaultEditBuffer();
+					}
+					if (val == 6) {
+						/* Change font size */
+						font_CommitEditBuffer();
+						edit.gridx = 0;
+						edit.gridy = 0;
+						if (edit.fonttype == LFONT_T) {
+							edit.fonttype = SFONT_T;
+							edit.xlim = 16;
+							edit.ylim = 12;
+						}
+						else if (edit.fonttype == SFONT_T) {
+							edit.fonttype = LFONT_T;
+							edit.xlim = 12;
+							edit.ylim = 14;
+						}
+						else;
+						font_LoadEditBuffer();
+					}
+					if (val == 7) {
+						/* Delete codepoint */
+					}
+					if (val == 8) {
+						/* Clear grid */
+						font_ModifyEditBuffer(BUFMOD_CLEAR);
+					}
+					u = UPD_ALL;
 				}
 			}
 			if (edit.context & CX_BROWSING) {
@@ -165,15 +249,16 @@ void main(void) {
 				}
 				if (ck & ctrl_2nd) {
 					font_LoadEditBuffer();
+					menutabs[1][0][0] = OBJ_INACTIVE;
 					edit.context = CX_EDITING;
 					while (GetScan());	//wait until keyrelease
-					u |= UPD_GRID;
+					u |= UPD_GRID|UPD_TABS;
 				}
 			}
 			
 			
 			/* ################### CONTEXTLESS MENUS ##################### */
-			if (k == tk_File) {
+			if (k == tk_File) { /* ~~~~~~~~~~~ FILE MENU ~~~~~~~~~~~~~~~~  */
 				val = menu_DrawTabMenu(file_menutext,0);
 				if (val == 1) {
 					rval = 2;	//If hasn't changed, make new file anyway.
@@ -251,11 +336,7 @@ void main(void) {
 				}
 				u |= UPD_ALL;
 			}
-			if (k == tk_Edit) {
-				val = menu_DrawTabMenu(edit_menutext,1);
-				u |= UPD_ALL;
-			}
-			if (k == tk_Help) {
+			if (k == tk_Help) { /* ~~~~~~~~~~~ HELP MENU ~~~~~~~~~~~~~~~~  */
 				val = menu_DrawTabMenu(help_menutext,4);
 				u |= UPD_ALL;
 			}
@@ -288,22 +369,6 @@ void sidebarbracket(uint8_t w, uint8_t y,uint8_t offset) {
 	gfx_FillRectangle_NoClip(tx,y+offset,w,2);
 }
 /* Put other functions here */
-
-char *editor_title = "it's going to be a font editor. rawrf.";
-char *menu_fileopt[] = {"\0FILE",""};
-char *menu_editopt[] = {"\0EDIT",""};
-char *menu_prevopt[] = {"\0PREV","CODEPNT"};
-char *menu_nextopt[] = {"\0NEXT","CODEPNT"};
-char *menu_helpopt[] = {"\0HELP",""};
-char **menutabs[] = {menu_fileopt,menu_editopt,menu_prevopt,menu_nextopt,menu_helpopt};
-
-char *file_viewpro[] = {"\0PRGMS",""};
-char *file_viewapv[] = {"\0APPVARS",""};
-char *file_chgfile[] = {"\0BROWSE","FILES"};
-char *file_chgname[] = {"\0INPUT","NAME"};
-char *file_helpopt[] = {"\0HELP",""};
-
-char **filetabs[] = {file_viewpro,file_viewapv,file_chgfile,file_chgname,file_helpopt};
 
 
 void menu_Redraw(void) {
@@ -444,6 +509,13 @@ void menu_Redraw(void) {
 		gfx_PrintUInt(h,2);
 		y += 8+8;
 		
+		/*
+		font_EditbufToSprite();
+		gfx_Sprite_NoClip((gfx_sprite_t*)tempsprite,SIDEBAR_LEFT+4,y);
+		y += 16;
+		*/
+		
+		
 		#endif
 		
 		if (u & UPD_PREVIEW)	//Preview sprite being edited (editing with grid)
@@ -542,12 +614,22 @@ void font_NewFile(void) {
 	numcodes = 0;
 	edit.update = UPD_ALL;
 	edit.context = CX_EDITING;
+	/*
 	edit.fonttype = LFONT_T;
 	edit.codepoint = 'A';
 	edit.gridx = 0;
 	edit.gridy = 0;
 	edit.xlim = 12;
 	edit.ylim = 14;
+	*/
+	///*
+	edit.fonttype = SFONT_T;
+	edit.codepoint = 'A';
+	edit.gridx = 0;
+	edit.gridy = 0;
+	edit.xlim = 16;
+	edit.ylim = 12;
+	//*/
 	edit.haschanged = 0;
 	edit.verifiedfile = 0;
 	strcpy(curfile.name,"UNTITLED");
@@ -555,6 +637,10 @@ void font_NewFile(void) {
 	curfile.filetype = 0x06;
 	curfile.fontstruct = &fontdata;
 	font_LoadEditBuffer();
+	copyid = LFONT_T;
+	memset(copybuf,0,LARGEST_BUF);
+	menutabs[1][0][0] = OBJ_INACTIVE;
+
 }
 
 void font_LoadEditBuffer(void) {
@@ -1030,9 +1116,55 @@ void menu_PreviewFont(void) {
 	
 }
 
+void font_ModifyEditBuffer(uint8_t modify_how) {
+	size_t	len;
+	uint8_t i,*buf;
+	
+	buf = editbuf;
+	len = LARGEST_BUF;
+	if ((modify_how == BUFMOD_CLEAR) || (modify_how == BUFMOD_INVERT)) {
+		if (modify_how == BUFMOD_CLEAR)
+			i = 0x00; //clear
+		else
+			i = 0xFF; //invert
+		if (edit.fonttype == SFONT_T) { ++buf; --len; }
+		for (;len;--len,++buf) *buf = (*buf & i) ^ i;
+	}
+	return;
+}
 
 
 
-
+void font_EditbufToSprite(void) {
+	uint8_t *ptr,x,y;
+	
+	ptr = tempsprite;
+	*ptr = edit.xlim;
+	++ptr;
+	*ptr = edit.ylim;
+	++ptr;
+	
+	for (y = 0; y < edit.ylim; ++y) {
+		for (x = 0; x < edit.xlim; ++x) {
+			*ptr = (GetFontBit(x,y,edit.fonttype)) ? 0x00 : 0xFF;
+			++ptr;
+		}
+	}
+}
+void font_SpriteToEditbuf(void) {
+	uint8_t *ptr,x,y;
+	
+	ptr = tempsprite+2;
+	
+	for (y = 0; y < edit.ylim; ++y) {
+		for (x = 0; x < edit.xlim; ++x) {
+			if (*ptr)
+				ResFontBit(x,y,edit.fonttype);
+			else
+				SetFontBit(x,y,edit.fonttype);
+			++ptr;
+		}
+	}
+}
 
 
