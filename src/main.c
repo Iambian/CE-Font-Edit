@@ -31,7 +31,8 @@
 
 #include "main.h"
 #include "defs.h"
-
+#include "resostub.h"
+#include "stalstub.h"
 
 /* Put your function prototypes here */
 void	menu_Redraw(void);
@@ -41,11 +42,11 @@ void 	font_LoadDefaultEditBuffer(void);
 uint8_t	menu_GetMenuHeight(char **s);
 uint8_t	menu_GetMenuWidth(char **s);
 void	menu_DrawMenuBox(int x, uint8_t y, int w, uint8_t h);
+void	menu_DrawNotice(char **sa);
 uint8_t	menu_DrawTabMenu(char **sa, uint8_t pos);
 void	font_CommitEditBuffer(void);
 int		menu_DrawFileMenu(char **sa, uint8_t id);
-
-
+int		font_SaveFile(void);
 
 
 
@@ -68,7 +69,13 @@ char *file_menutext[] = {"\1New","\1Open...","\1Save","\1Save As...","\3-","\1Pr
 char *edit_menutext[] = {"\1Undo","\1Redo","\1Copy","\1Paste","\1Use TI-OS Glyph","\1Change Font Size","\1Delete Codepoint","\1Clear Grid","\0"};
 char *help_menutext[] = {"\1Using the editor","\1File operations","\1Edit operations","\1Hotkeys 1","\1Hotkeys 2","\1Hotkeys 3","\1About the rawrfs","\0"};
 
+char *notice_saved[]		= {"New file has","been saved!","\0"};
+char *notice_overwrite[]	= {"Old file has","been overwritten!","\0"};
+char *overwrite_menu[]		= {"\1Do not save","\1Overwrite existing file","\0"};
 
+
+int resosize;
+int stalsize;
 
 void main(void) {
 	uint8_t k,ck,u,hold,gx,gy,fid,val,i,j,*buf;
@@ -82,6 +89,9 @@ void main(void) {
 	gfx_SetTextBGColor(COLOR_TRANS);
 	gfx_SetDrawBuffer();
 	/* ---------------------- */
+	stalsize = sizeof stalstub;	//Important for ASM program stub that applies it.
+	resosize = sizeof resostub; //Same as above. Or else saving won't work.
+	
 	gfx_FillScreen(COLOR_BLUE);
 	font_NewFile();
 	
@@ -174,12 +184,6 @@ void main(void) {
 					}
 					u = UPD_ALL;
 				}
-				
-				
-				
-				
-				
-				
 				u |= UPD_ALL;
 			}
 			if (k == tk_Edit) {
@@ -192,12 +196,41 @@ void main(void) {
 			}
 			/* DEBUGGING UNIT */
 			if (k == sk_Math) {
-				//menu_DrawFileMenu(help_menutext,FILEACT_SAVEAS);
-				rval = menu_DrawFileMenu(help_menutext,FILEACT_SAVEAS);
-				
-				
-				
-				
+				while (1) {
+					rval = menu_DrawFileMenu(help_menutext,FILEACT_SAVEAS);
+					if (rval<0) break;
+					
+					//Todo: Link this section into Save As.. then do something
+					//intelligent for "save" such as autooverwriting but prompt
+					//if the file was (somehow) archived.
+					//Also figure out how to track changes to files (e.g. set
+					//a change flag on each commit) and run a prompt if you try
+					//to open a file, or create a new one.
+					
+					//Even further into the future, implement UX elements such
+					//as bitmap shifting, small font switching/support,
+					//undo/redos, and in general linking together all the menus
+					//for a cohesive product. Or graying out the menu items that
+					//don't have any linkages to ensure the user doesn't try
+					//anything funny and maybe crash things.
+					
+					//Also, handle unsaved changes on quit or something like
+					//that. Also tag each undo/redo state as whether or not
+					//the most recent save was involved so that it can
+					//intelligently tell that the file was reverted to an
+					//unchanged state, to avoid unnecessary prompts.
+					
+					
+					//REMEMBER THAT THIS CALL AND ALL CALLS LIKE IT OPERATE ON
+					//"menufile" DATA STRUCTURE, NOT "curfile". YOU MUST COPY
+					//TO menufile IF CHECKING THE WORKING COPY FOR SUCH THINGS
+					//AS IF IN RAM OR ARCHIVE, OR IF DOING A FILE EXIST LOOKUP
+					rval = font_SaveFile();	//-1 on cancel, 0 on saved, 1 on overwrite
+					if (rval >= 0) break;
+				}
+				if (!(rval < 0)) {
+					memcpy(&curfile,&menufile,10); //save type and name to current
+				}
 				u = UPD_ALL;
 			}
 			
@@ -528,6 +561,31 @@ void menu_DrawMenuBox(int x, uint8_t y, int w, uint8_t h) {
 	gfx_SetTextFGColor(CLR_MENU_BODYFG);
 }
 
+void menu_DrawNotice(char **sa) {
+	int x,w;
+	uint8_t y,ty,h,i;
+	char *s;
+	
+	w = 2+2+4+4+menu_GetMenuWidth(sa);
+	h = 2+2+menu_GetMenuHeight(sa);
+	x = (LCD_WIDTH-w)/2;
+	y = (LCD_HEIGHT-h)/2;
+	ty = y+4;
+	menu_DrawMenuBox(x,y,w,h);
+	i = 0;
+	do {
+		s = sa[i];
+		
+		if (!*s) break;
+		gfx_PrintStringXY(s,(LCD_WIDTH-gfx_GetStringWidth(s))/2,ty);
+		ty += 12;
+		++i;
+	} while (1);
+	gfx_BlitRectangle(gfx_buffer,x,y,w,h);
+	while (!GetScan());	//wait until keyboard read
+	while (GetScan());	//wait until release
+}
+
 uint8_t menu_DrawTabMenu(char **sa, uint8_t pos) {
 	int x,tx,bx,w;
 	uint8_t y,ty,by,h;
@@ -537,9 +595,14 @@ uint8_t menu_DrawTabMenu(char **sa, uint8_t pos) {
 	w = 2+2+4+4+menu_GetMenuWidth(sa);	//Menu borders and side margins
 	//dbg_sprintf(dbgout,"Retrieved width in drawmenutab\n");
 	h = 2+2+menu_GetMenuHeight(sa);					//Just menu borders. Margins built in
-	x = pos*(LCD_WIDTH/5)+1;
-	if (x+w > LCD_WIDTH) x = LCD_WIDTH-w;
-	y = LCD_HEIGHT-TAB_HEIGHT-h;
+	if (pos<5) {
+		x = pos*(LCD_WIDTH/5)+1;
+		if (x+w > LCD_WIDTH) x = LCD_WIDTH-w;
+		y = LCD_HEIGHT-TAB_HEIGHT-h;
+	} else {
+		x = (LCD_WIDTH-w)/2;
+		y = (LCD_HEIGHT-h)/2;
+	}
 	menu_DrawMenuBox(x,y,w,h);
 	
 	mprev = mpos = 0;
@@ -629,10 +692,17 @@ int	menu_DrawFileMenu(char **sa, uint8_t id) {
 	else	u = CX_FILEVIEW;
 	edit.oldcx = edit.context;
 	edit.context = u;
+	edit.update = UPD_TABS;
+	if (id)	filetabs[3][0][0] = OBJ_INACTIVE;
+	else	filetabs[3][0][0] = OBJ_BLOCKED;
+	filetabs[4][0][0] = OBJ_BLOCKED;	//No help for you. For now.
+	
+	menu_Redraw();
 	//our filetypes are never zero. can copy with rest of name string
-	if (id)	strcpy((char*)&menufile.filetype,(char*)&curfile.filetype);
+	strcpy((char*)&menufile.filetype,(char*)&curfile.filetype);
 	alphastate = CURSOR_ALPHA;
 	letterpos = blinktimer = 0;
+	
 	
 	w = 214;
 	h = (id) ? 176: 156;
@@ -674,25 +744,84 @@ int	menu_DrawFileMenu(char **sa, uint8_t id) {
 				continue;
 			}
 			if (id) {
-				rval = -2;
+				rval = 0;
 				break;
 			} else {
 				rval = mpos;
 				break;
 			}
 		}
+		if ((k & ctrl_Alpha) && (u & CX_FILEEDIT)) {
+			while (GetScan());	//wait until key release
+			++alphastate;
+			if (alphastate > CURSOR_NUMBER) alphastate = CURSOR_ALPHA;
+		}
+		
+		if (k) {
+			c = KeyToChar(k,alphastate);
+			
+			//dbg_sprintf(dbgout,"Returned key, cval, char: %i, %i, %c\n",k,c,c);
+			if (((alphastate == CURSOR_SOLID) || (alphastate == CURSOR_NUMBER)) &&
+				!letterpos && (typeid == 0x06)) {
+				c = 0;	//Disallow numbers as first character of progname.
+				//dbg_sprintf(dbgout,"Failed illegal first char prgm name test\n");
+			}
+			if ((c > 0x60) && (typeid == 0x06)) {
+				c = 0;	//Disallow lowercase letters as first character of programs.
+				//dbg_sprintf(dbgout,"Failed illegal lowercase letters test.\n");
+			}
+			if ((u & CX_FILEEDIT) && c) {
+				//Overwrite mode. Maybe support logic for insert later?
+				//dbg_sprintf(dbgout,"Outputting letter %c\n",c);
+				menufile.name[letterpos] = c;
+				if (letterpos < 7) ++letterpos;
+			}
+		}
+		
+		if (k == sk_Yequ) {
+			u = CX_FILEVIEW;
+			k = sk_Left;
+		}
+		if (k == sk_Window) {
+			u = CX_FILEVIEW;
+			k = sk_Right;
+		}
+		if (k == sk_Zoom) {
+			u = CX_FILEVIEW;
+			k = 0x3F;
+		}
+		if ((k == sk_Trace) && id) {
+			u = CX_FILEEDIT;
+			k = 0x3F;
+		}
+		if (k == sk_Graph) {
+			/* File help menu */
+			k = 0x3F;
+		}
+		
+		
 		gfx_SetColor(CLR_MENU_BODYBG);
-		
-		/* TODO: Tab actions for changing typeid */
-		//if ((k == sk_
-		
-		
+		if ((k == sk_Del) && (u & CX_FILEEDIT)) {
+			//It'll bring the zero-terminator with it
+			memmove(&menufile.name[letterpos],&menufile.name[letterpos+1],8-letterpos);
+			if (!menufile.name[letterpos] && letterpos) {
+				--letterpos;
+			}
+		}
 		
 		if ((k == sk_Left) || (k == sk_Right) || (k == 0x3F)) {
 			if ((u & CX_FILEVIEW) || (k == 0x3F)) {
 				/* Changing topbar */
 				if ((k == sk_Right) && (typeid != 0x15)) typeid = 0x15;				
-				if ((k == sk_Left)  && (typeid != 0x06)) typeid = 0x06;
+				if ((k == sk_Left)  && (typeid != 0x06)) {
+					typeid = 0x06;
+					if (id) {
+						if (id && (menufile.name[0] < 0x3A)) menufile.name[0] = 'A';
+						for (i=0;i<8;++i) {
+							if (menufile.name[i] > 0x60) menufile.name[i] -= 0x20;
+						}
+					}
+				}
 				
 				gfx_FillRectangle(tx,ty,tw,th);
 				if (id)	s = "Save as...";
@@ -770,23 +899,16 @@ int	menu_DrawFileMenu(char **sa, uint8_t id) {
 			gfx_FillRectangle_NoClip(bx+72,by+2,132,12);
 			gfx_SetColor(CLR_MENU_BODYBG);
 			gfx_SetTextXY(bx+80,by+4);
-			c = 0;
-				for (i=0;i<9;++i) {
-					if ( u & CX_FILEEDIT) {
-						if ((i == letterpos) && (blinktimer < CURSOR_TIMEON)) {
-							c = alphastate;
-						} else if (i<8) {
-							c = menufile.name[i];
-						} else if ((i==9) && (letterpos == 9)) c = CURSOR_CHECKER;
-						else c = 0;
-					} else 	{ 
-						if (i < 8) 
-							c = menufile.name[i]; 
-						else 
-							c = 0; 
+			for (i=0;i<8;++i) {
+				c = menufile.name[i];
+				if ((u & CX_FILEEDIT) && ( i == letterpos)) {
+					if (blinktimer < CURSOR_TIMEON) {
+						c = alphastate;
 					}
-					if (c) gfx_PrintChar(c);
 				}
+				if (!c) break;
+				gfx_PrintChar(c);
+			}
 			gfx_BlitRectangle(gfx_buffer,bx,by,bw,bh);
 		}
 		
@@ -800,6 +922,26 @@ int	menu_DrawFileMenu(char **sa, uint8_t id) {
 	return rval;
 }
 
+
+//-1 on cancel, 0 on saved, 1 on overwrite
+int	font_SaveFile(void) {
+	uint8_t i;
+	
+	if (!LookupMenufile()) {
+		i = menu_DrawTabMenu(overwrite_menu,255);
+		if (i == 2) {
+			SaveMenufile();
+			menu_DrawNotice(notice_overwrite);
+			return 1;
+		} else {
+			return -1;
+		}
+	} else {
+		SaveMenufile();
+		menu_DrawNotice(notice_saved);
+		return 0;
+	}
+}
 
 
 

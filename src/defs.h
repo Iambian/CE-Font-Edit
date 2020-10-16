@@ -160,6 +160,7 @@
 #define UPD_TOP		0x08
 #define UPD_PREVIEW	0x10
 
+#define OBJ_INACTIVE 0x00
 #define OBJ_ACTIVE	0x01
 #define OBJ_BLOCKED	0x02
 #define	OBJ_LOCKED	0x04

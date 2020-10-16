@@ -18,6 +18,9 @@ XDEF _InvFontBit
 XDEF _GetDefaultLocation
 XDEF _LoadCursors
 XDEF _KeyToChar
+XDEF _LookupMenufile
+XDEF _SaveMenufile
+XDEF _MenufileInRam
 
 
 ;Import these definitions from othere sources (e.g. libraries)
@@ -49,8 +52,10 @@ _ClrLocalizeHook  EQU $0213F4 ;''
 _SetFontHook      EQU $021454 ;''
 _ClrFontHook      EQU $021458 ;''
 _MovFrOp1         EQU $02032C ;''
-
-
+_Mov9ToOp1        EQU $020320 ;''
+_DelVarArc        EQU $021434 ;''
+_CreateAppVar     EQU $021330 ;''
+_CreateProtProg   EQU $021334 ;''
 
 prevDData         EQU $D005A1 ;''
 lFont_record      EQU $D005A4 ;''
@@ -856,15 +861,21 @@ _KeyToChar:
       dec   hl
       dec   hl
       ld    a,(hl)
-      dec   a     ;align results to keygroups
       cp    a,9   ;arrow keys disallowed
       jr    c,keytochar_disallow
       cp    a,48  ;keys higher than alpha disallowed (no printables)
       jr    nc,keytochar_disallow
-      djnz  keytochar_nums    ;no mode? do only nums
-      djnz  keytochar_alpha
-      djnz  keytochar_lower
-      djnz  keytochar_nums
+      ;scf
+      ;sbc   hl,hl
+      ;ld    (hl),2
+      dec   b
+      jr    z,keytochar_nums
+      dec   b
+      jr    z,keytochar_alpha
+      dec   b
+      jr    z,keytochar_lower
+      dec   b
+      jr    z,keytochar_nums
       ;anything above 4 is disallowed.
 keytochar_disallow:
       xor   a,a
@@ -896,4 +907,104 @@ keytochar_alphatable:
 ;  A  B  C  D  E  F  G  H  I  J  K  L  M  N  O  P  Q  R  S  T  U  V  W  X  Y  Z
 db 47,39,31,46,38,30,22,14,45,37,29,21,13,44,36,28,20,12,43,35,27,19,11,42,34,26
 ;Total: 98 bytes
+
+;------------------------------------------------------------------------------
+;------------------------------------------------------------------------------
+XREF _menufile
+XREF _resostub
+XREF _resosize
+XREF _stalstub
+XREF _stalsize
+XREF _fontdata
+XREF _numcodes
+
+;returns 0 if found, 0xFF if not found
+_LookupMenufile:
+      ld    iy,flags
+      ld    hl,_menufile
+      call  _Mov9ToOp1
+      call  _ChkFindSym
+      sbc   a,a
+      ret
+      
+_SaveMenufile:
+      ld    a,2
+      ld    (-1),a
+      call  _LookupMenufile
+      inc   a           ;$FF (sets Z) = not found
+      ld    a,(Op1)     ;in case it's needed
+      jr    z,savemenufile_createnewfile
+      call  _DelVarArc
+      jr    _SaveMenufile
+savemenufile_createnewfile:
+      call  savemenufile_getfontsize
+      cp    a,$15 ;resource stubs are appvars
+      jr    z,savemenufile_makeappvar
+      cp    a,$06
+      jr    z,savemenufile_makeprotprog
+      ;Not valid filetype. Restore _fontdata then return.
+      jr    savemenufile_exit
+
+savemenufile_makeappvar:
+      ld    de,(_resosize)
+      add   hl,de
+      push  de
+            call  _CreateAppVar
+      pop   bc
+      ld    hl,_resostub
+      jr    savemenufile_collect
+savemenufile_makeprotprog:
+      ld    de,(_stalsize)
+      add   hl,de
+      push  de
+            call  _CreateProtProg
+      pop   bc
+      ld    hl,_stalstub
+savemenufile_collect:
+      inc   de
+      inc   de
+      ldir        ;write stub
+      ld    a,(_numcodes)
+      ld    c,a
+      ld    b,28
+      mlt   bc
+      inc   b
+      ld    hl,_fontdata
+      ldir        ;write encodings and large font data
+      ld    hl,_fontdata+256+7140
+      ld    a,(_numcodes)
+      ld    c,a
+      ld    b,25
+      mlt   bc
+      ldir              ;write small font data
+      call  _LookupMenufile
+savemenufile_exit:
+      ld    a,$FF
+      ld    (_fontdata),a
+      ret
+      
+
+
+;returns: HL=size. Also sets start of _fontdata to saveable state.
+;caller is responsible for setting *_fontdata to 0xFF again.
+savemenufile_getfontsize:
+      push  af
+            ld    hl,_fontdata
+            ld    a,(_numcodes)
+            ld    (hl),a
+            ld    L,a
+            ld    H,28+25     ;sizes of both large font and small fonts
+            mlt   hl
+            inc   h
+      pop   af
+      ret
+      
+;returns: 0 if in ram, 0xFF if in archive
+_MenufileInRam:
+      call  _LookupMenufile
+      call  _ChkInRam
+      sbc   a,a
+      ret
+      
+
 

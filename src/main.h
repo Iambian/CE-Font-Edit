@@ -47,6 +47,10 @@ void	ResFontBit(uint8_t x, uint8_t y, uint8_t fonttype);
 uint8_t	InvFontBit(uint8_t x, uint8_t y, uint8_t fonttype);
 void*	GetDefaultLocation(char c, uint8_t fonttype);
 void	LoadCursors(void);
+char	KeyToChar(uint8_t key, uint8_t alphastate);
+uint8_t LookupMenufile(void);
+void	SaveMenufile(void);
+
 
 extern uint8_t fonttype;
 extern uint8_t numcodes;
