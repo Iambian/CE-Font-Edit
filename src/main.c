@@ -47,7 +47,8 @@ uint8_t	menu_DrawTabMenu(char **sa, uint8_t pos);
 void	font_CommitEditBuffer(void);
 int		menu_DrawFileMenu(char **sa, uint8_t id);
 int		font_SaveFile(void);
-
+void	font_QuickSave(void);
+void	menu_PreviewFont(void);
 
 
 
@@ -65,14 +66,17 @@ struct filelist_st curfile;
 struct filelist_st menufile;
 char namebuf[10];
 
-char *file_menutext[] = {"\1New","\1Open...","\1Save","\1Save As...","\3-","\1Preview","\1Export","\1Import","\3-","\1Exit","\0"};
+char *file_menutext[] = {"\1New","\1Open...","\1Save","\1Save As...","\3-","\1Preview","\3Export","\3Import","\3-","\1Exit","\0"};
 char *edit_menutext[] = {"\1Undo","\1Redo","\1Copy","\1Paste","\1Use TI-OS Glyph","\1Change Font Size","\1Delete Codepoint","\1Clear Grid","\0"};
 char *help_menutext[] = {"\1Using the editor","\1File operations","\1Edit operations","\1Hotkeys 1","\1Hotkeys 2","\1Hotkeys 3","\1About the rawrfs","\0"};
 
 char *notice_saved[]		= {"New file has","been saved!","\0"};
 char *notice_overwrite[]	= {"Old file has","been overwritten!","\0"};
+char *notice_noempties[]	= {"You are not allowed to","save an empty file."," ","You must first commit editor changes","by pushing [ENTER] on the editor","or by changing codepoints.","\0"};
 char *overwrite_menu[]		= {"\1Do not save","\1Overwrite existing file","\0"};
-
+char *unsaved_menu[]		= {"\1Go back and save changes","\1Discard changes, make new file","\0"};
+char *unsavedquit_menu[]	= {"\1Go back and save changes","\1Discard changes, quit the editor","\0"};
+char *unsavedopen_menu[]	= {"\1Go back and save changes","\1Overwrite session with another file","\0"};
 
 int resosize;
 int stalsize;
@@ -103,7 +107,7 @@ void main(void) {
 		k  &= 0x3F;
 		u = edit.update;
 		
-		if (k == sk_Mode) break;
+		if ((k == sk_Mode) && (ck & ctrl_2nd)) break;
 		
 		if (k|ck) {
 			/* ################ HANDLE EDITING CONTEXT ################### */
@@ -144,6 +148,11 @@ void main(void) {
 					font_CommitEditBuffer();
 					edit.context = CX_BROWSING;
 					u |= UPD_GRID;
+					/* TODO: Update title bar to indicate file has changed */
+				}
+				if (k == sk_Enter) {
+					font_CommitEditBuffer();
+					/* TODO: Update title bar to indicate file has changed */
 				}
 			}
 			if (edit.context & CX_BROWSING) {
@@ -166,23 +175,79 @@ void main(void) {
 			/* ################### CONTEXTLESS MENUS ##################### */
 			if (k == tk_File) {
 				val = menu_DrawTabMenu(file_menutext,0);
-				if (val == 2) {
-					rval = menu_DrawFileMenu(help_menutext,FILEACT_OPEN);
-					if (rval>=0) {
-						font_NewFile();
-						memcpy(&curfile,&filelist[rval],sizeof curfile);
-						buf = (uint8_t *) curfile.fontstruct;
-						memcpy(fontdata.codepoints,buf,256);
-						numcodes = *fontdata.codepoints;
-						*fontdata.codepoints = 0xFF;
-						buf = buf + 256;
-						memcpy(fontdata.lfont,buf,LFONT_SIZE*numcodes);
-						buf += LFONT_SIZE*numcodes;
-						memcpy(fontdata.sfont,buf,SFONT_SIZE*numcodes);
-						curfile.fontstruct = &fontdata;
-						font_LoadEditBuffer();
+				if (val == 1) {
+					rval = 2;	//If hasn't changed, make new file anyway.
+					if (edit.haschanged) {
+						rval = menu_DrawTabMenu(unsaved_menu,255);
 					}
-					u = UPD_ALL;
+					if (rval == 2) font_NewFile();
+				}
+				
+				if (val == 2) {
+					rval = 2;	//If hasn't changed, open new file anyway.
+					if (edit.haschanged) {
+						rval = menu_DrawTabMenu(unsavedopen_menu,255);
+					}
+					if (rval == 2) {
+						rval = menu_DrawFileMenu(help_menutext,FILEACT_OPEN);
+						if (rval>=0) {
+							font_NewFile();
+							memcpy(&curfile,&filelist[rval],sizeof curfile);
+							buf = (uint8_t *) curfile.fontstruct;
+							memcpy(fontdata.codepoints,buf,256);
+							numcodes = *fontdata.codepoints;
+							*fontdata.codepoints = 0xFF;
+							buf = buf + 256;
+							memcpy(fontdata.lfont,buf,LFONT_SIZE*numcodes);
+							buf += LFONT_SIZE*numcodes;
+							memcpy(fontdata.sfont,buf,SFONT_SIZE*numcodes);
+							curfile.fontstruct = &fontdata;
+							font_LoadEditBuffer();
+							edit.verifiedfile = 1;
+						}
+					}
+				}
+				
+				if (val == 3) {
+					if (!edit.verifiedfile) {
+						val = 4; //do "Save As..." instead
+					} else {
+						font_QuickSave();
+					}
+				}
+				
+				if (val == 4) {
+					if (!numcodes) {
+						menu_DrawNotice(notice_noempties);
+					} else {
+						while (1) {
+							rval = menu_DrawFileMenu(help_menutext,FILEACT_SAVEAS);
+							if (rval<0) break;
+							rval = font_SaveFile();	//-1 on cancel, 0 on saved, 1 on overwrite
+							if (rval >= 0) break;
+						}
+						if (!(rval < 0)) {
+							memcpy(&curfile,&menufile,10); //save type and name to current
+						}
+					}
+				}
+				if (val == 6) {
+					menu_PreviewFont();
+				}
+				if (val == 7) {
+					/* Export */
+					
+				}
+				if (val == 8) {
+					/* Import */
+					
+				}
+				if (val == 10) {
+					rval = 2;	//If hasn't changed, quit anyway.
+					if (edit.haschanged) {
+						rval = menu_DrawTabMenu(unsavedquit_menu,255);
+					}
+					if (rval == 2) break;
 				}
 				u |= UPD_ALL;
 			}
@@ -196,41 +261,6 @@ void main(void) {
 			}
 			/* DEBUGGING UNIT */
 			if (k == sk_Math) {
-				while (1) {
-					rval = menu_DrawFileMenu(help_menutext,FILEACT_SAVEAS);
-					if (rval<0) break;
-					
-					//Todo: Link this section into Save As.. then do something
-					//intelligent for "save" such as autooverwriting but prompt
-					//if the file was (somehow) archived.
-					//Also figure out how to track changes to files (e.g. set
-					//a change flag on each commit) and run a prompt if you try
-					//to open a file, or create a new one.
-					
-					//Even further into the future, implement UX elements such
-					//as bitmap shifting, small font switching/support,
-					//undo/redos, and in general linking together all the menus
-					//for a cohesive product. Or graying out the menu items that
-					//don't have any linkages to ensure the user doesn't try
-					//anything funny and maybe crash things.
-					
-					//Also, handle unsaved changes on quit or something like
-					//that. Also tag each undo/redo state as whether or not
-					//the most recent save was involved so that it can
-					//intelligently tell that the file was reverted to an
-					//unchanged state, to avoid unnecessary prompts.
-					
-					
-					//REMEMBER THAT THIS CALL AND ALL CALLS LIKE IT OPERATE ON
-					//"menufile" DATA STRUCTURE, NOT "curfile". YOU MUST COPY
-					//TO menufile IF CHECKING THE WORKING COPY FOR SUCH THINGS
-					//AS IF IN RAM OR ARCHIVE, OR IF DOING A FILE EXIST LOOKUP
-					rval = font_SaveFile();	//-1 on cancel, 0 on saved, 1 on overwrite
-					if (rval >= 0) break;
-				}
-				if (!(rval < 0)) {
-					memcpy(&curfile,&menufile,10); //save type and name to current
-				}
 				u = UPD_ALL;
 			}
 			
@@ -518,6 +548,8 @@ void font_NewFile(void) {
 	edit.gridy = 0;
 	edit.xlim = 12;
 	edit.ylim = 14;
+	edit.haschanged = 0;
+	edit.verifiedfile = 0;
 	strcpy(curfile.name,"UNTITLED");
 	curfile.size = 0;
 	curfile.filetype = 0x06;
@@ -655,6 +687,7 @@ void font_CommitEditBuffer(void) {
 	codepoint = edit.codepoint;
 	if (!codepoint) return;
 	fcode = fontdata.codepoints[codepoint];
+	edit.haschanged = 1;
 	
 	if (fcode == 0xFF) {
 		fcode = numcodes;
@@ -744,6 +777,7 @@ int	menu_DrawFileMenu(char **sa, uint8_t id) {
 				continue;
 			}
 			if (id) {
+				if (!menufile.name[0]) continue; //Did we just try to save w/o a name?
 				rval = 0;
 				break;
 			} else {
@@ -932,6 +966,8 @@ int	font_SaveFile(void) {
 		if (i == 2) {
 			SaveMenufile();
 			menu_DrawNotice(notice_overwrite);
+			edit.haschanged = 0;
+			edit.verifiedfile = 1;
 			return 1;
 		} else {
 			return -1;
@@ -939,13 +975,60 @@ int	font_SaveFile(void) {
 	} else {
 		SaveMenufile();
 		menu_DrawNotice(notice_saved);
+		edit.haschanged = 0;
+		edit.verifiedfile = 1;
 		return 0;
 	}
 }
 
+//Takes curfile and saves over whatever without confirmation. Usually only done
+//on initial load verification.
+void font_QuickSave(void) {
+	menufile = curfile;
+	SaveMenufile();
+	edit.haschanged = 0;
+}
 
-
-
+void menu_PreviewFont(void) {
+	int x,tx,temp;
+	uint8_t y,ty,tmp;
+	uint8_t i,j,k,mode;
+	char *top;
+	
+	mode = 0;
+	k = 0x3F;
+	while (1) {
+		
+		if (k == sk_Mode) break;
+		if ((k == sk_Left) && (mode > 0)) --mode;
+		if ((k == sk_Right)&& (mode < 2)) ++mode;
+		
+		
+		
+		if (k) {
+			gfx_FillScreen(CLR_MENU_BODYBG);
+			gfx_PrintStringXY("Previewing: ",8,8);
+			gfx_PrintString(curfile.name);
+			if (mode == 0) {
+				top = "Large Font \x10";
+				
+				
+			} else if (mode == 1) {
+				top = "\x11 Small Font \x10";
+				
+				
+			} else {
+				top = "\x11 Tests";
+				
+			}
+			gfx_PrintStringXY(top,(LCD_WIDTH-gfx_GetStringWidth(top)-8),8);
+			gfx_PrintStringXY("Press [MODE] to go back",8,18);
+			gfx_BlitBuffer();
+		}
+		k = GetScan();
+	}
+	
+}
 
 
 

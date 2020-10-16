@@ -22,6 +22,8 @@ struct editor_st {
 	uint8_t	xlim;
 	uint8_t ylim;
 	uint8_t cursor;
+	uint8_t haschanged;
+	uint8_t verifiedfile;
 	
 };
 
