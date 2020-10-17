@@ -934,8 +934,8 @@ _LookupMenufile:
       ret
       
 _SaveMenufile:
-      ld    a,2
-      ld    (-1),a
+      ;ld    a,2
+      ;ld    (-1),a
       call  _LookupMenufile
       inc   a           ;$FF (sets Z) = not found
       ld    a,(Op1)     ;in case it's needed

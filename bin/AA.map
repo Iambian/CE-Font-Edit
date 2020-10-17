@@ -2,23 +2,23 @@ Segment  Base   Top    High   Length
 -------- ------ ------ ------ -------
 icon     D1A882 D1A9AB           129h
 launcher D1A9AB D1AA03            58h
-libs     D1AA03 D1AA84            81h
-startup  D1AA84 D1AAC3            3Fh
-cleanup  D1AAC3 D1AAD7            14h
-exit     D1AAD7 D1AADD             6h
-code     D1AADD D1D47B          299Eh
-data     D1D47B D1D7FE           383h
-strsect  D1D7FE D1DC11           413h
-text     D1DC11 D1DC11             0h
+libs     D1AA03 D1AA88            85h
+startup  D1AA88 D1AAC7            3Fh
+cleanup  D1AAC7 D1AADB            14h
+exit     D1AADB D1AAE1             6h
+code     D1AAE1 D1D770          2C8Fh
+data     D1D770 D1DC1C           4ACh
+strsect  D1DC1C D1E461           845h
+text     D1E461 D1E461             0h
 bss      D031F6 D07BAC D13FD6   49B6h
 header   D1A87F D1A882             3h
 
 Label                          Value
 ----------------------------   ------
-_os_DisableHomeTextBuffer    = D1AADD
-_os_EnableHomeTextBuffer     = D1AAEF
-__frameset0                  = D1AB01
-__frameset                   = D1AB0C
+_os_DisableHomeTextBuffer    = D1AAE1
+_os_EnableHomeTextBuffer     = D1AAF3
+__frameset0                  = D1AB05
+__frameset                   = D1AB10
 __imuls                      = 000154
 __imul_b                     = 000158
 __imul_b                     = 000150
@@ -29,7 +29,7 @@ __ishru_b                    = 000188
 __irems                      = 00016C
 __stoiu                      = 000264
 _memmove                     = 0000A8
-_memset                      = D1AB1A
+_memset                      = D1AB1E
 _memcpy                      = 0000A4
 _strcpy                      = 0000CC
 __ior                        = 000168
@@ -39,58 +39,68 @@ __setflag                    = 000218
 __findlibload                = D1A9AB
 __program_icon               = D1A887
 __program_description        = D1A989
-__ccleanup                   = D1AAC3
+__ccleanup                   = D1AAC7
 _errno                       = D008DC
 _init                        = D1A882
-_exit                        = D1AAD9
-__exit                       = D1AAB2
-__exitsp                     = D1AAB2
-__errsp                      = D1AAB2
-_font_SpriteToEditbuf        = D1CEA5
-_font_EditbufToSprite        = D1CE1D
-_font_ModifyEditBuffer       = D1CDA4
-_menu_PreviewFont            = D1CCBD
-_font_QuickSave              = D1CCA5
-_font_SaveFile               = D1CC39
-_menu_DrawFileMenu           = D1C315
-_font_CommitEditBuffer       = D1C19C
-_menu_DrawTabMenu            = D1BF2A
-_menu_DrawNotice             = D1BE1C
-_menu_DrawMenuBox            = D1BD8F
-_menu_GetMenuWidth           = D1BD37
-_menu_GetMenuHeight          = D1BCFD
-_font_LoadDefaultEditBuffer  = D1BCD6
-_font_LoadEditBuffer         = D1BCA9
-_font_NewFile                = D1BB8C
-_menu_Redraw                 = D1B241
-_sidebarbracket              = D1B1B5
-_centersidebar               = D1B17B
-_main                        = D1AB31
+_exit                        = D1AADD
+__exit                       = D1AAB6
+__exitsp                     = D1AAB6
+__errsp                      = D1AAB6
+_font_SpriteToEditbuf        = D1D1A0
+_font_EditbufToSprite        = D1D118
+_font_ModifyEditBuffer       = D1D09F
+_menu_PreviewFont            = D1CDF4
+_previewfont_drawglyph       = D1CD88
+_font_QuickSave              = D1CD70
+_font_SaveFile               = D1CD04
+_menu_DrawFileMenu           = D1C3E0
+_font_CommitEditBuffer       = D1C267
+_menu_DrawTabMenu            = D1BFF9
+_menu_DrawNotice             = D1BED3
+_menu_DrawMenuBox            = D1BE46
+_menu_GetMenuWidth           = D1BDEE
+_menu_GetMenuHeight          = D1BDB4
+_font_LoadDefaultEditBuffer  = D1BD8D
+_font_LoadEditBuffer         = D1BD60
+_font_NewFile                = D1BC44
+_menu_Redraw                 = D1B2F9
+_sidebarbracket              = D1B26D
+_centersidebar               = D1B233
+_main                        = D1AB35
 _stalsize                    = D07BA9
 _resosize                    = D07BA6
-_unsavedopen_menu            = D1D7F5
-_unsavedquit_menu            = D1D7EC
-_unsaved_menu                = D1D7E3
-_overwrite_menu              = D1D7DA
-_notice_noempties            = D1D7C5
-_notice_overwrite            = D1D7BC
-_notice_saved                = D1D7B3
-_help_menutext               = D1D79B
-_edit_menutext               = D1D780
-_file_menutext               = D1D75F
-_filetabs                    = D1D750
-_file_helpopt                = D1D74A
-_file_chgname                = D1D744
-_file_chgfile                = D1D73E
-_file_viewapv                = D1D738
-_file_viewpro                = D1D732
-_menutabs                    = D1D723
-_menu_helpopt                = D1D71D
-_menu_nextopt                = D1D717
-_menu_prevopt                = D1D711
-_menu_editopt                = D1D70B
-_menu_fileopt                = D1D705
-_editor_title                = D1D702
+_testing_string              = D1DC0A
+_unsavedopen_menu            = D1DC01
+_unsavedquit_menu            = D1DBF8
+_unsaved_menu                = D1DBEF
+_overwrite_menu              = D1DBE6
+_notice_helpabout            = D1DBC8
+_notice_helphotkey3          = D1DBA1
+_notice_helphotkey2          = D1DB7A
+_notice_helphotkey1          = D1DB4D
+_notice_helpeditops          = D1DB26
+_notice_helpfileops          = D1DAFF
+_notice_helpusing            = D1DADE
+_notice_noempties            = D1DAC9
+_notice_overwrite            = D1DAC0
+_notice_saved                = D1DAB7
+_notice_error                = D1DAA8
+_help_menutext               = D1DA90
+_edit_menutext               = D1DA75
+_file_menutext               = D1DA54
+_filetabs                    = D1DA45
+_file_helpopt                = D1DA3F
+_file_chgname                = D1DA39
+_file_chgfile                = D1DA33
+_file_viewapv                = D1DA2D
+_file_viewpro                = D1DA27
+_menutabs                    = D1DA18
+_menu_helpopt                = D1DA12
+_menu_nextopt                = D1DA0C
+_menu_prevopt                = D1DA06
+_menu_editopt                = D1DA00
+_menu_fileopt                = D1D9FA
+_editor_title                = D1D9F7
 _tempsprite                  = D07724
 _namebuf                     = D0771A
 _menufile                    = D0770B
@@ -104,27 +114,27 @@ _copybuf                     = D03214
 _copyid                      = D03213
 _editbuf                     = D031F7
 _fonttype                    = D031F6
-_stalstub                    = D1D597
-_resostub                    = D1D49D
-_GetScan                     = D1CF21
-_PrintHexPair                = D1CFBD
-_PrintLargeChar              = D1D11B
-_PrintSmallChar              = D1D1CE
-_PopulateFileList            = D1CFDC
-_GetSmallCharWidth           = D1D187
-_SetupPalette                = D1D2ED
-_GetCharLocation             = D1D0AD
-_PrintChar                   = D1D08A
-_GetFontBit                  = D1D27E
-_SetFontBit                  = D1D284
-_ResFontBit                  = D1D28B
-_InvFontBit                  = D1D293
-_GetDefaultLocation          = D1D06F
-_LoadCursors                 = D1D32E
-_KeyToChar                   = D1D36F
-_LookupMenufile              = D1D3D7
-_SaveMenufile                = D1D3EA
-_MenufileInRam               = D1D471
+_stalstub                    = D1D88C
+_resostub                    = D1D792
+_GetScan                     = D1D21C
+_PrintHexPair                = D1D2B8
+_PrintLargeChar              = D1D416
+_PrintSmallChar              = D1D4C9
+_PopulateFileList            = D1D2D7
+_GetSmallCharWidth           = D1D482
+_SetupPalette                = D1D5E8
+_GetCharLocation             = D1D3A8
+_PrintChar                   = D1D385
+_GetFontBit                  = D1D579
+_SetFontBit                  = D1D57F
+_ResFontBit                  = D1D586
+_InvFontBit                  = D1D58E
+_GetDefaultLocation          = D1D36A
+_LoadCursors                 = D1D629
+_KeyToChar                   = D1D66A
+_LookupMenufile              = D1D6D2
+_SaveMenufile                = D1D6E5
+_MenufileInRam               = D1D766
 _gfx_Begin                   = D1AA16
 _gfx_End                     = D1AA1A
 _gfx_SetColor                = D1AA1E
@@ -143,10 +153,11 @@ _gfx_SetTextTransparentColor = D1AA4E
 _gfx_GetStringWidth          = D1AA52
 _gfx_GetTextX                = D1AA56
 _gfx_GetTextY                = D1AA5A
-_gfx_FillRectangle           = D1AA5E
-_gfx_HorizLine_NoClip        = D1AA62
-_gfx_Rectangle_NoClip        = D1AA66
-_gfx_FillRectangle_NoClip    = D1AA6A
-_gfx_SetTransparentColor     = D1AA6E
-_gfx_SetCharData             = D1AA72
-_kb_Scan                     = D1AA80
+_gfx_HorizLine               = D1AA5E
+_gfx_FillRectangle           = D1AA62
+_gfx_HorizLine_NoClip        = D1AA66
+_gfx_Rectangle_NoClip        = D1AA6A
+_gfx_FillRectangle_NoClip    = D1AA6E
+_gfx_SetTransparentColor     = D1AA72
+_gfx_SetCharData             = D1AA76
+_kb_Scan                     = D1AA84

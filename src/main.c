@@ -40,7 +40,7 @@ void 	font_NewFile(void);
 void	font_LoadEditBuffer(void);
 void 	font_LoadDefaultEditBuffer(void);
 uint8_t	menu_GetMenuHeight(char **s);
-uint8_t	menu_GetMenuWidth(char **s);
+int		menu_GetMenuWidth(char **s);
 void	menu_DrawMenuBox(int x, uint8_t y, int w, uint8_t h);
 void	menu_DrawNotice(char **sa);
 uint8_t	menu_DrawTabMenu(char **sa, uint8_t pos);
@@ -89,15 +89,45 @@ char **filetabs[] = {file_viewpro,file_viewapv,file_chgfile,file_chgname,file_he
 
 char *file_menutext[] = {"\1New","\1Open...","\1Save","\1Save As...","\3-","\1Preview","\3Export","\3Import","\3-","\1Exit","\0"};
 char *edit_menutext[] = {"\3Undo","\3Redo","\1Copy","\1Paste","\1Use TI-OS Glyph","\1Change Font Size","\3Delete Codepoint","\1Clear Grid","\0"};
-char *help_menutext[] = {"\1Using the editor","\1File operations","\1Edit operations","\1Hotkeys 1","\1Hotkeys 2","\1Hotkeys 3","\1About the rawrfs","\0"};
+char *help_menutext[] = {"\1Using the editor","\3File operations","\3Edit operations","\1Hotkeys 1","\3Hotkeys 2","\3Hotkeys 3","\1About the rawrfs","\0"};
 
+char *notice_error[]		= {"ERR: Attempted to display","a textbox too wide","for the display.","git gud scrub","\0"};
 char *notice_saved[]		= {"New file has","been saved!","\0"};
 char *notice_overwrite[]	= {"Old file has","been overwritten!","\0"};
 char *notice_noempties[]	= {"You are not allowed to","save an empty file."," ","You must first commit editor changes","by pushing [ENTER] on the editor","or by changing codepoints.","\0"};
+char *notice_helpusing[]	= {	"Use the top row keys to access menus in",
+								"the tabs listed at the screen bottom.",
+								"PREV CODEPNT and NEXT CODEPNT tabs",
+								"commits changes to local store and",
+								"deactivates the editor. Push [2nd]",
+								"to activate the pixel editor. Save",
+								"and open files in the FILE menu.",
+								"When hotkeys include ALPHA or 2ND",
+								"these keys must be held while pushing",
+								"the other listed key.","\0"};
+char *notice_helpfileops[]	= {"","","","","","","","","","","","","\0"};
+char *notice_helpeditops[]	= {"","","","","","","","","","","","","\0"};
+char *notice_helphotkey1[]	= {	"[Clear] = Clears the pixel editor",
+								"[Alpha+Clear] = Inverts the pixels",
+								"[2nd+Mode] = Quick exit while in editor",
+								"[Enter] = Save editor changes to local",
+								"[2nd+arrows] = Drag the edit tool in editor",
+								"[+] = Increase width of smallfont character",
+								"[-] = Decrease width of smallfont character",
+								"More will be available eventually.",
+								"","","","","","","\0"};
+char *notice_helphotkey2[]	= {"","","","","","","","","","","","","\0"};
+char *notice_helphotkey3[]	= {"","","","","","","","","","","","","\0"};
+char *notice_helpabout[]	= {"Copyright (C) 2020   [Formal dragon noises]"," ","Something about betaware and","being a barely usable piece of","junk. Please test for me. I'll be grateful."," ","Signed,"," ","rawrs","\0"};
 char *overwrite_menu[]		= {"\1Do not save","\1Overwrite existing file","\0"};
 char *unsaved_menu[]		= {"\1Go back and save changes","\1Discard changes, make new file","\0"};
 char *unsavedquit_menu[]	= {"\1Go back and save changes","\1Discard changes, quit the editor","\0"};
 char *unsavedopen_menu[]	= {"\1Go back and save changes","\1Overwrite session with another file","\0"};
+
+char *testing_string[] = {
+	"the quick brown fox","jumped over the slow","lazy dog",
+	"THE QUICK BROWN FOX","JUMPED OVER THE SLOW","LAZY DOG"
+};
 
 int resosize;
 int stalsize;
@@ -134,22 +164,34 @@ void main(void) {
 			/* ################ HANDLE EDITING CONTEXT ################### */
 			//dbg_sprintf(dbgout,"keyboard value: %i\n",k);
 			if (edit.context & CX_EDITING) {
-				if ((k == sk_Up)    && (edit.gridy > 0)) --edit.gridy;
-				if ((k == sk_Left)  && (edit.gridx > 0)) --edit.gridx;
-				if ((k == sk_Down)  && (edit.gridy+1 < edit.ylim)) ++edit.gridy;
-				if  (k == sk_Right) {
-					//if (edit.fonttype == SFONT_T)
-					//	i = editbuf[0];
-					//else
-						i = edit.xlim;
-					if (edit.gridx+1 < i) ++edit.gridx;
+				if (ck & ctrl_Alpha) {
+					/* TODO: Alpha+arrow to shift character around bitmap */
+					
+				} else {
+					if ((k == sk_Up)    && (edit.gridy > 0)) --edit.gridy;
+					if ((k == sk_Left)  && (edit.gridx > 0)) --edit.gridx;
+					if ((k == sk_Down)  && (edit.gridy+1 < edit.ylim)) ++edit.gridy;
+					if  (k == sk_Right) {
+						//if (edit.fonttype == SFONT_T)
+						//	i = editbuf[0];
+						//else
+							i = edit.xlim;
+						if (edit.gridx+1 < i) ++edit.gridx;
+					}
 				}
 				if (edit.fonttype == SFONT_T) {
-					
-					
-					
-					
-					
+					if ((k == sk_Add) && (editbuf[0]<16)) {
+						font_EditbufToSprite();
+						++editbuf[0];
+						font_SpriteToEditbuf();
+						u |= UPD_GRID | UPD_SIDE;
+					}
+					if ((k == sk_Sub) && (editbuf[0]>1)) {
+						font_EditbufToSprite();
+						--editbuf[0];
+						font_SpriteToEditbuf();
+						u |= UPD_GRID | UPD_SIDE;
+					}
 				}
 				if (k && k<9) u |= UPD_GRID;	//Shortcut for "any arrow key"
 				
@@ -162,6 +204,7 @@ void main(void) {
 						else			ResFontBit(gx,gy,fid);
 					} else {
 						hold = 1+ !InvFontBit(gx,gy,fid);	//1=was set, 2= not set
+						u |= UPD_GRID;
 					}
 					if (k && k<9) u |= UPD_PREVIEW;
 				}
@@ -338,6 +381,30 @@ void main(void) {
 			}
 			if (k == tk_Help) { /* ~~~~~~~~~~~ HELP MENU ~~~~~~~~~~~~~~~~  */
 				val = menu_DrawTabMenu(help_menutext,4);
+				if (val == 1) {
+					/* Using */
+					menu_DrawNotice(notice_helpusing);
+				}
+				if (val == 2) {
+					/* File ops */
+				}
+				if (val == 3) {
+					/* Edit ops */
+				}
+				if (val == 4) {
+					/* Hotkeys 1 */
+					menu_DrawNotice(notice_helphotkey1);
+				}
+				if (val == 5) {
+					/* Hotkeys 2 */
+				}
+				if (val == 6) {
+					/* Hotkeys 3 */
+				}
+				if (val == 7) {
+					/* About */
+					menu_DrawNotice(notice_helpabout);
+				}
 				u |= UPD_ALL;
 			}
 			/* DEBUGGING UNIT */
@@ -614,22 +681,22 @@ void font_NewFile(void) {
 	numcodes = 0;
 	edit.update = UPD_ALL;
 	edit.context = CX_EDITING;
-	/*
+	///*
 	edit.fonttype = LFONT_T;
 	edit.codepoint = 'A';
 	edit.gridx = 0;
 	edit.gridy = 0;
 	edit.xlim = 12;
 	edit.ylim = 14;
-	*/
-	///*
+	//*/
+	/*
 	edit.fonttype = SFONT_T;
 	edit.codepoint = 'A';
 	edit.gridx = 0;
 	edit.gridy = 0;
 	edit.xlim = 16;
 	edit.ylim = 12;
-	//*/
+	*/
 	edit.haschanged = 0;
 	edit.verifiedfile = 0;
 	strcpy(curfile.name,"UNTITLED");
@@ -659,18 +726,21 @@ uint8_t menu_GetMenuHeight(char **s) {
 	}
 	return y;
 }
-uint8_t menu_GetMenuWidth(char **s) {
+int menu_GetMenuWidth(char **s) {
 	uint8_t i;
 	int x,xl;
 	
 	for (i=xl=0; *s[i]; ++i) {
 		x = gfx_GetStringWidth(s[i]);
+		//dbg_sprintf(dbgout,"Witdth iter %i, width %i\n",i,x);
 		if (x>xl) xl = x;
 	}
+	//dbg_sprintf(dbgout,"Returning with width %i\n",xl);
 	return xl;
 }
 
 void menu_DrawMenuBox(int x, uint8_t y, int w, uint8_t h) {
+	//dbg_sprintf(dbgout,"Writing width %i\n",w);
 	gfx_SetColor(CLR_MENU_BORDER);
 	gfx_Rectangle_NoClip(x,y,w,h);
 	gfx_Rectangle_NoClip(x+1,y+1,w-2,h-2);
@@ -685,6 +755,7 @@ void menu_DrawNotice(char **sa) {
 	char *s;
 	
 	w = 2+2+4+4+menu_GetMenuWidth(sa);
+	if (w>320) { sa = notice_error; w = 319;}
 	h = 2+2+menu_GetMenuHeight(sa);
 	x = (LCD_WIDTH-w)/2;
 	y = (LCD_HEIGHT-h)/2;
@@ -1075,11 +1146,25 @@ void font_QuickSave(void) {
 	edit.haschanged = 0;
 }
 
+void previewfont_drawglyph(char c, int x,uint8_t y, uint8_t fontid) {
+	uint8_t color;
+	
+	if (!c) return;
+	gfx_SetTextXY(x,y);
+	if (fontdata.codepoints[(uint8_t)c] == 0xFF) {
+		color = COLOR_ROSE;
+	} else {
+		color = COLOR_BLACK;
+	}
+	gfx_SetTextFGColor(color);
+	PrintChar(c,&fontdata,fontid);
+}
+
 void menu_PreviewFont(void) {
 	int x,tx,temp;
 	uint8_t y,ty,tmp;
-	uint8_t i,j,k,mode;
-	char *top;
+	uint8_t a,b,i,j,k,mode,fontid;
+	char *top,*s,c;
 	
 	mode = 0;
 	k = 0x3F;
@@ -1096,17 +1181,50 @@ void menu_PreviewFont(void) {
 			gfx_PrintStringXY("Previewing: ",8,8);
 			gfx_PrintString(curfile.name);
 			if (mode == 0) {
+/*	Draw area is (14w by 18h, though fonts are 12w by 14h
+	22 characters fit on a line. 12 lines required to cover full range.
+	Line height at 18 requires 216h. Acceptable results with LH=16 req 192.
+	Starting Y coord can be either 24 or 48, respectively.
+	Starting X coord at 6. This can be calculated.
+*/
 				top = "Large Font \x10";
-				
-				
+				c = 1;
+				y = 48;
+				for (i = 0; i<12 ; ++i, y += 16) {
+					for (j = 0, x = 0; (j<22) && c; ++j, x += 14, ++c) {
+						previewfont_drawglyph(c,x,y,LFONT_T);
+					}
+				}
 			} else if (mode == 1) {
 				top = "\x11 Small Font \x10";
-				
-				
+/*	Small font chars up to 16w, 12h. Draw area 16w 14h
+	Start X is 0, Start y is 48. 20 characters per line, 13 lines
+*/
+				c = 1;
+				y = 48;
+				for (i = 0; i<13 ; ++i, y += 14) {
+					for (j = 0, x = 6; (j<20) && c; ++j, x += 16, ++c) {
+						previewfont_drawglyph(c,x,y,SFONT_T);
+					}
+				}
 			} else {
 				top = "\x11 Tests";
 				
+				for (i = 0, y = 48; i<2; ++i) {
+					for (j = 0; j < 6; ++j, y += 16) {
+						s = testing_string[j];
+						for (a = 0, x = 0; s[a]; ++a) {
+							previewfont_drawglyph(s[a],x,y,i);
+							if (i)	x+=14;
+							else	x+= *(GetSmallCharWidth(s[a],&fontdata));
+						}
+						gfx_SetColor(COLOR_GRAY);
+						gfx_HorizLine(0,y+(12+2*i),320);
+					}
+				}
+				
 			}
+			gfx_SetTextFGColor(COLOR_BLACK);
 			gfx_PrintStringXY(top,(LCD_WIDTH-gfx_GetStringWidth(top)-8),8);
 			gfx_PrintStringXY("Press [MODE] to go back",8,18);
 			gfx_BlitBuffer();

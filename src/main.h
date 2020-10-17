@@ -39,7 +39,7 @@ void	PrintHexPair(uint8_t num);
 void	PrintLargeChar(char c, void *fontstruct);
 void	PrintSmallChar(char c, void *fontstruct);
 uint8_t	PopulateFileList(uint8_t filetype);
-void	GetSmallCharWidth(char c, void *fontstruct);
+char*	GetSmallCharWidth(char c, void *fontstruct); //Returns pointer to width.
 void	SetupPalette(void);
 void*	GetCharLocation(char c, void *fontstruct, uint8_t fontid);
 void	PrintChar(char c, void *fontstruct, uint8_t fontid);
