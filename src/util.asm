@@ -908,7 +908,7 @@ keytochar_compare:
 
 keytochar_numtable:
 ;  0  1  2  3  4  5  6  7  8  9  
-db 33,34,26,18,35,27,19,36,25,20
+db 33,34,26,18,35,27,19,36,28,20
 keytochar_alphatable:
 ;  A  B  C  D  E  F  G  H  I  J  K  L  M  N  O  P  Q  R  S  T  U  V  W  X  Y  Z
 db 47,39,31,46,38,30,22,14,45,37,29,21,13,44,36,28,20,12,43,35,27,19,11,42,34,26
