@@ -52,6 +52,7 @@ void	LoadCursors(void);
 char	KeyToChar(uint8_t key, uint8_t alphastate);
 uint8_t LookupMenufile(void);
 void	SaveMenufile(void);
+void	ExportToLFont(void);
 
 
 extern uint8_t fonttype;

@@ -21,6 +21,7 @@ XDEF _KeyToChar
 XDEF _LookupMenufile
 XDEF _SaveMenufile
 XDEF _MenufileInRam
+XDEF _ExportToLFont
 
 ;Import these definitions from othere sources (e.g. libraries)
 XREF _kb_Scan
@@ -1015,21 +1016,53 @@ _MenufileInRam:
 ;------------------------------------------------------------------------------
 ;------------------------------------------------------------------------------
 
+XREF _lfstsize
+XREF _lfststub
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+_ExportToLFont:
+      call  _LookupMenufile
+      inc   a           ;$FF (sets Z) = not found
+      jr    z,exporttolfont_createnewfile
+      call  _DelVarArc
+      jr    _ExportToLFont
+exporttolfont_createnewfile:
+      ld    hl,_fontdata
+      ld    a,(_numcodes)
+      ld    (hl),a      ;finalize size of data tables      
+      ld    L,a
+      ld    H,28        ;size of large font data
+      mlt   hl
+      inc   h           ;plus initial table
+      push  hl          ;STACK1: SIZEOF DATA TABLES
+            ld    de,(_lfststub)
+            push  de    ;STACK2: SIZEOF LFSTSTUB
+                  add   hl,de
+                  call  _CreateProtProg
+            pop   bc    ;BC = sizeof lfststub
+            ld    hl,_lfststub
+            inc   de
+            inc   de
+            ldir        ;write lfststub
+      pop   bc          ;BC = sizeof data tables
+      ld    hl,_fontdata
+      push  hl
+            ldir        ;write data tables
+      pop   hl
+      ld    (hl),$FF    ;revert data tables to editable state again.
+      ret
+      
+;------------------------------------------------------------------------------
+;------------------------------------------------------------------------------
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
 
 
 

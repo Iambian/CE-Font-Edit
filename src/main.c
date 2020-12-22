@@ -33,6 +33,7 @@
 #include "defs.h"
 #include "resostub.h"
 #include "stalstub.h"
+#include "lfststub.h"
 
 /* Put your function prototypes here */
 void	menu_Redraw(void);
@@ -45,6 +46,7 @@ void	menu_DrawMenuBox(int x, uint8_t y, int w, uint8_t h);
 void	menu_DrawNotice(char **sa);
 uint8_t	menu_DrawTabMenu(char **sa, uint8_t pos);
 void	font_CommitEditBuffer(void);
+void	menu_FileNameInputDevice(char *filenamebuf, uint8_t key, int x, int y);
 int		menu_DrawFileMenu(char **sa, uint8_t id);
 int		font_SaveFile(void);
 void	font_QuickSave(void);
@@ -131,6 +133,7 @@ char *testing_string[] = {
 
 int resosize;
 int stalsize;
+int lfstsize;
 
 void main(void) {
 	uint8_t k,ck,u,hold,gx,gy,fid,val,i,j,*buf;
@@ -146,6 +149,7 @@ void main(void) {
 	/* ---------------------- */
 	stalsize = sizeof stalstub;	//Important for ASM program stub that applies it.
 	resosize = sizeof resostub; //Same as above. Or else saving won't work.
+	lfstsize = sizeof lfststub;
 	
 	gfx_FillScreen(COLOR_BLUE);
 	font_NewFile();
@@ -870,6 +874,13 @@ void font_CommitEditBuffer(void) {
 	memcpy(buf,editbuf,copylen);
 	return;
 }
+
+void menu_FileNameInputDevice(char *filenamebuf, uint8_t key, int x, int y) {
+	
+	
+	
+}
+
 
 int	menu_DrawFileMenu(char **sa, uint8_t id) {
 	int 	x,tx,lx,rx,bx,w,tw,lw,rw,bw,tempx,temp,rval;
